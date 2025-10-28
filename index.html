@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>پازل رستوران نور</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:"Vazirmatn",sans-serif}
+  body{
+    display:flex;align-items:center;justify-content:center;
+    height:100vh;width:100%;
+    background:linear-gradient(180deg,#fff8f3,#fff);
+    overflow:hidden;
+  }
+  .container{
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+  }
+  h1{
+    font-size:20px;color:#b12a1c;letter-spacing:1px;margin-bottom:8px;
+  }
+  .grid{
+    width:90vw;max-width:420px;aspect-ratio:1/1;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(4,1fr);
+    gap:3px;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .cell{background:#eee;border-radius:4px;overflow:hidden;position:relative;}
+  .piece{
+    width:100%;height:100%;
+    background-image:url('puzzle.jpg');
+    background-size:400% 400%;
+    background-repeat:no-repeat;
+    cursor:grab;
+    transition:transform .2s;
+  }
+  .piece:active{cursor:grabbing;transform:scale(.97)}
+  .cell.drag-over{outline:2px dashed rgba(0,0,0,0.1)}
+  .completed .piece{box-shadow:0 0 10px rgba(0,0,0,0.15)}
+  .modal{
+    position:fixed;inset:0;
+    display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.4);z-index:100;
+  }
+  .modal.show{display:flex}
+  .modal-content{
+    background:#fff;border-radius:14px;padding:20px 28px;text-align:center;
+    box-shadow:0 8px 40px rgba(0,0,0,0.2);animation:pop .3s ease;
+  }
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal-content h2{color:#b12a1c;margin-bottom:8px}
+  .modal-content p{font-size:14px;color:#444}
+  button{
+    margin-top:12px;background:#b12a1c;color:#fff;border:none;
+    padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>پازل رستوران نور</h1>
+  <div id="grid" class="grid"></div>
+</div>
+
+<div id="modal" class="modal">
+  <div class="modal-content">
+    <h2>تبریک 🎉</h2>
+    <p> یک پرس چلوکباب مهمان ما</p>
+    <button id="again">بازی دوباره</button>
+  </div>
+</div>
+
+<script>
+const SIZE = 4, TOTAL = SIZE*SIZE;
+const grid = document.getElementById('grid');
+const modal = document.getElementById('modal');
+const again = document.getElementById('again');
+let pieces=[];
+
+function buildGrid(){
+  grid.innerHTML='';
+  for(let i=0;i<TOTAL;i++){
+    const cell=document.createElement('div');
+    cell.className='cell';
+    cell.dataset.index=i;
+    grid.appendChild(cell);
+  }
+}
+function createPieces(){
+  pieces=[];
+  for(let i=0;i<TOTAL;i++){
+    const p=document.createElement('div');
+    p.className='piece';
+    const row=Math.floor(i/SIZE);
+    const col=i%SIZE;
+    const xpos=(col/(SIZE-1))*100;
+    const ypos=(row/(SIZE-1))*100;
+    p.style.backgroundPosition=`${xpos}% ${ypos}%`;
+    p.dataset.correct=i;
+    p.draggable=true;
+    p.dataset.id='p'+i;
+    pieces.push(p);
+  }
+  const cells=Array.from(grid.children);
+  cells.forEach((c,i)=>c.appendChild(pieces[i]));
+}
+function shuffle(){
+  const cells=Array.from(grid.children);
+  let arr=cells.map(c=>c.firstChild);
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  cells.forEach((c,i)=>{c.innerHTML='';c.appendChild(arr[i]);});
+}
+function enableDrag(){
+  const cells=document.querySelectorAll('.cell');
+  cells.forEach(cell=>{
+    cell.addEventListener('dragover',e=>{e.preventDefault();cell.classList.add('drag-over');});
+    cell.addEventListener('dragleave',()=>cell.classList.remove('drag-over'));
+    cell.addEventListener('drop',e=>{
+      e.preventDefault();
+      cell.classList.remove('drag-over');
+      const id=e.dataTransfer.getData('text/plain');
+      const dragged=document.querySelector(`[data-id="${id}"]`);
+      swap(dragged,cell.firstChild);
+    });
+  });
+  const all=document.querySelectorAll('.piece');
+  all.forEach(p=>{
+    p.addEventListener('dragstart',e=>{
+      e.dataTransfer.setData('text/plain',p.dataset.id);
+    });
+    p.addEventListener('click',()=>{
+      if(selected&&!selected.isSameNode(p)) swap(selected,p);
+      else selected=p;
+    });
+  });
+}
+let selected=null;
+function swap(a,b){
+  if(!a||!b||a===b)return;
+  const pa=a.parentElement,pb=b.parentElement;
+  pa.appendChild(b);pb.appendChild(a);
+  selected=null;
+  checkWin();
+}
+function checkWin(){
+  const cells=Array.from(grid.children);
+  const ok=cells.every((c,i)=>{
+    const p=c.firstChild;
+    return p && +p.dataset.correct===i;
+  });
+  if(ok){grid.classList.add('completed');setTimeout(()=>modal.classList.add('show'),400);}
+}
+again.onclick=()=>{modal.classList.remove('show');start();};
+function start(){
+  buildGrid();
+  createPieces();
+  shuffle();
+  enableDrag();
+  grid.classList.remove('completed');
+}
+start();
+</script>
+</body>
+</html>
